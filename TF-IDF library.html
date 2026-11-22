@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TF-IDF Lab | 텍스트 분석기</title>
+  <style>
+    :root { --ink:#15233b; --muted:#68758a; --line:#dfe6ef; --paper:#ffffff; --sky:#eef6ff; --blue:#1769e0; --navy:#0c2548; --mint:#dff7ed; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#f5f8fc; font-family:Inter,"Pretendard",system-ui,sans-serif; }
+    header { background:var(--navy); color:white; padding:42px max(24px,calc((100vw - 1120px)/2)); }
+    .eyebrow { color:#8fc7ff; font-size:.78rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { margin:8px 0 5px; font-size:clamp(2rem,5vw,3.35rem); letter-spacing:-.06em; }
+    header p { max-width:620px; margin:0; color:#c6d8ee; line-height:1.6; }
+    main { max-width:1120px; margin:0 auto; padding:28px 24px 64px; }
+    .grid { display:grid; grid-template-columns:1.15fr .85fr; gap:20px; }
+    .card { background:var(--paper); border:1px solid var(--line); border-radius:16px; padding:24px; box-shadow:0 8px 20px #1d3d6508; }
+    h2 { font-size:1.15rem; margin:0 0 8px; letter-spacing:-.03em; }
+    .hint { color:var(--muted); font-size:.88rem; line-height:1.5; margin:0 0 15px; }
+    textarea { width:100%; min-height:225px; resize:vertical; padding:15px; border:1px solid #cbd7e5; border-radius:10px; color:var(--ink); font:inherit; line-height:1.65; outline:none; }
+    textarea:focus { border-color:var(--blue); box-shadow:0 0 0 3px #1769e018; }
+    .actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:14px; }
+    button { cursor:pointer; border:0; border-radius:9px; padding:11px 16px; font:inherit; font-weight:750; }
+    .primary { background:var(--blue); color:white; } .primary:hover { background:#0c57bf; }
+    .secondary { background:#edf2f8; color:#38506c; } .secondary:hover { background:#e0e9f3; }
+    .doc-note { margin-left:auto; color:var(--muted); font-size:.8rem; }
+    .formula { display:grid; gap:10px; margin-top:13px; }
+    .formula div { background:var(--sky); border-radius:9px; padding:11px 13px; font-size:.89rem; line-height:1.5; }
+    .stopword-box { margin-top:17px; padding-top:16px; border-top:1px solid var(--line); }
+    .toggle { display:flex; align-items:center; gap:8px; font-size:.9rem; font-weight:750; cursor:pointer; }
+    .toggle input { accent-color:var(--blue); width:16px; height:16px; }
+    #stopwords { min-height:78px; margin-top:10px; font-size:.83rem; }
+    code { color:#095ac3; font-weight:750; font-family:ui-monospace,monospace; }
+    .notice { margin:21px 0; border-radius:12px; padding:13px 16px; background:var(--mint); color:#176548; font-size:.9rem; }
+    #results { display:none; }
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:18px 0; }
+    .metric { background:#f6f9fc; border:1px solid var(--line); border-radius:11px; padding:15px; }
+    .metric b { display:block; font-size:1.55rem; letter-spacing:-.05em; } .metric span { color:var(--muted); font-size:.78rem; }
+    .toolbar { display:flex; justify-content:space-between; gap:12px; align-items:center; margin:10px 0; }
+    .toolbar label { color:var(--muted); font-size:.86rem; } select { padding:7px; border:1px solid var(--line); border-radius:7px; }
+    .tabs { display:flex; gap:7px; margin:18px 0; border-bottom:1px solid var(--line); }
+    .tab { border-radius:8px 8px 0 0; background:transparent; color:var(--muted); padding:10px 13px; }
+    .tab.active { color:var(--blue); background:#eef6ff; } .tab-panel { display:none; } .tab-panel.active { display:block; }
+    h3 { font-size:1rem; margin:24px 0 8px; }
+    .vocab { display:flex; flex-wrap:wrap; gap:6px; padding:13px; border:1px solid var(--line); border-radius:10px; }
+    .vocab span { background:#eef6ff; color:#1557aa; border-radius:99px; padding:3px 9px; font-size:.83rem; }
+    .practice-note { background:#fff8e9; color:#785415; border-radius:10px; padding:12px 14px; font-size:.85rem; line-height:1.6; }
+    .answer-input { width:74px; padding:7px; border:1px solid #cbd7e5; border-radius:6px; font:inherit; text-align:right; }
+    .answer-input:focus { outline:2px solid #1769e033; border-color:var(--blue); }
+    .answer-input.correct { background:#e8f8ef; border-color:#4daa78; } .answer-input.incorrect { background:#fff0ed; border-color:#dc735b; }
+    .grade-result { margin-top:12px; padding:12px 14px; border-radius:9px; background:#eef6ff; color:#1d527f; font-size:.88rem; }
+    .sentence-list { display:grid; gap:12px; margin:20px 0; }
+    .sentence-card { border:1px solid var(--line); border-radius:11px; overflow:hidden; }
+    .sentence-source { padding:12px 14px; background:#f6f9fc; font-size:.9rem; line-height:1.55; }
+    .sentence-source b { color:#526176; margin-right:8px; font-size:.76rem; }
+    .sentence-result { padding:12px 14px; font-size:.85rem; line-height:1.7; }
+    .sentence-result strong { display:block; color:#176548; font-size:.78rem; margin-bottom:3px; }
+    .tag { display:inline-block; padding:1px 7px; margin:1px 3px 1px 0; border-radius:99px; background:#fff0e7; color:#984a14; font-size:.8rem; }
+    .kept { color:#39536f; margin-top:6px; font-size:.82rem; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:10px; }
+    table { border-collapse:collapse; width:100%; min-width:630px; font-size:.9rem; } th { background:#f4f7fb; color:#526176; text-align:left; font-size:.76rem; letter-spacing:.03em; } th,td { padding:11px 13px; border-bottom:1px solid var(--line); } tbody tr:last-child td { border-bottom:0; } td:first-child { font-weight:750; } .bar { display:inline-block; width:70px; height:6px; margin-left:8px; border-radius:5px; background:#b5d7ff; vertical-align:middle; }
+    .empty { color:var(--muted); text-align:center; padding:30px; }
+    footer { color:#7a8799; font-size:.78rem; margin-top:20px; line-height:1.6; }
+    @media (max-width:760px) { .grid { grid-template-columns:1fr; } .metrics { grid-template-columns:1fr; } .doc-note { width:100%; margin-left:0; } header { padding-top:30px; } }
+  </style>
+</head>
+<body>
+  <header><div class="eyebrow">Natural language analysis</div><h1>TF-IDF Lab</h1><p>텍스트 속에서 중요한 단어를 찾아보세요. 줄바꿈 한 줄이 하나의 문서가 되어, 문서별 TF와 전체 IDF를 함께 계산합니다.</p></header>
+  <main>
+    <section class="grid">
+      <div class="card"><h2>분석할 텍스트</h2><p class="hint">여러 문서를 비교하려면 문서마다 한 줄씩 입력하세요. 한 줄만 쓰면 하나의 문서로 분석됩니다.</p>
+        <textarea id="source" aria-label="분석할 텍스트" placeholder="예시&#10;인공지능은 데이터를 학습해 문제를 해결합니다&#10;데이터 분석은 중요한 의사결정을 돕습니다&#10;인공지능과 데이터는 함께 혁신을 만듭니다"></textarea>
+        <div class="actions"><button class="primary" id="analyze">분석하기</button><button class="secondary" id="sample">예시 채우기</button><button class="secondary" id="clear">지우기</button><span class="doc-note">한글·영문·숫자 단어를 인식합니다</span></div>
+      </div>
+      <aside class="card"><h2>계산 기준</h2><p class="hint">같은 단어라도 여러 문서에 흔하면 중요도가 낮아집니다.</p><div class="formula"><div><code>TF</code> · 해당 문서에서 단어가 나온 횟수</div><div><code>IDF</code> · ln((문서 수 + 1) / (단어 포함 문서 수 + 1)) + 1</div><div><code>TF-IDF</code> · TF × IDF</div></div><div class="stopword-box"><label class="toggle"><input type="checkbox" id="use-stopwords" checked>기본 불용어 제외</label><p class="hint">추가로 제외할 단어를 입력하세요. 쉼표, 공백, 줄바꿈으로 구분합니다.</p><textarea id="stopwords" aria-label="추가 불용어" placeholder="예: 분석, 데이터, 그리고"></textarea></div></aside>
+    </section>
+    <div class="notice">형태소 분석: 조사와 대표 어미를 분리해 결과를 원형으로 묶습니다. 예: “시작이었다” → “시작이다”, “공부했다” → “공부하다”. 규칙 기반 분석이므로 전문 형태소 분석기와 결과가 다를 수 있습니다.</div>
+    <section class="card" id="results" aria-live="polite"><h2>분석 결과</h2><p class="hint" id="result-note"></p>
+      <div class="tabs" role="tablist"><button class="tab active" data-tab="analysis" role="tab">분석 결과</button><button class="tab" data-tab="practice" role="tab">TF-IDF 연습·채점</button></div>
+      <div class="tab-panel active" id="analysis-panel"><div class="metrics"><div class="metric"><b id="doc-count">0</b><span>문장 수</span></div><div class="metric"><b id="word-count">0</b><span>전체 단어 수</span></div><div class="metric"><b id="unique-count">0</b><span>고유 단어 수</span></div></div>
+        <div class="sentence-list" id="sentence-results"></div><h3>불용어 처리 후 단어집합</h3><div class="vocab" id="vocabulary"></div><h3>문장별 원핫벡터</h3><p class="hint">열 순서는 위 단어집합과 같습니다. 1은 해당 문장에 단어가 있음을 뜻합니다.</p><div class="table-wrap"><table id="onehot-table"></table></div>
+        <div class="toolbar"><label>표의 TF는 <select id="doc-select"></select> 기준입니다.</label></div><div class="table-wrap"><table><thead><tr><th>형태소 (원형)</th><th>품사·분석</th><th>원문 형태</th><th>TF</th><th>IDF</th><th>TF-IDF</th><th>상대 중요도</th></tr></thead><tbody id="rows"></tbody></table></div>
+      </div>
+      <div class="tab-panel" id="practice-panel"><h3>TF-IDF 계산 연습</h3><div class="practice-note">각 문장과 형태소 조합의 값을 직접 입력하세요. TF는 해당 문장의 빈도, DF는 해당 단어가 등장한 문서 수입니다. IDF는 화면의 스무딩 공식을 사용하며, 소수 넷째 자리까지 입력하면 됩니다.</div><div class="table-wrap"><table><thead><tr><th>문장</th><th>형태소</th><th>TF</th><th>DF</th><th>IDF</th><th>TF-IDF</th></tr></thead><tbody id="practice-rows"></tbody></table></div><div class="actions"><button class="primary" id="grade">결과 확인하기</button><button class="secondary" id="reset-practice">답안 지우기</button></div><div id="grade-result" class="grade-result">값을 입력한 뒤 결과 확인하기를 눌러 주세요.</div></div>
+    </section>
+    <footer>계산 방식: IDF에는 0으로 나누는 문제를 피하고 한 문서뿐인 경우에도 비교 가능한 값을 주기 위해 스무딩을 적용했습니다. 표는 TF-IDF가 높은 순으로 정렬됩니다.</footer>
+  </main>
+  <script>
+    const $ = s => document.querySelector(s);
+    const example = '인공지능은 데이터를 학습해 문제를 해결합니다\n데이터 분석은 중요한 의사결정을 돕습니다\n인공지능과 데이터는 함께 혁신을 만듭니다';
+    const defaultStopwords = '은 는 이 가 을 를 에 와 과 도 의 에서 에게 로 으로 에는 그리고 그러나 하지만 또한 그 이 저 것 수 등 및 the a an and or is are to of in on for with'.split(' ');
+    let model = null;
+    function tokenize(text) { return (text.match(/[가-힣A-Za-z0-9]+/g) || []).map(w => w.toLowerCase()); }
+    function splitParticle(word) {
+      const particles = ['에게서는','으로부터','에서부터','에게서','한테서','으로는','에서는','에게는','한테는','이라서','이어서','으로','에서','에게','한테','까지','부터','처럼','보다','이며','이고','이면','이라는','라고','하고','와','과','은','는','을','를','이','가','에','도','만','의','로'];
+      const particle = particles.find(p => word.endsWith(p) && word.length - p.length > 1);
+      return particle ? { stem:word.slice(0,-particle.length), particle } : { stem:word, particle:'' };
+    }
+    function analyzeMorpheme(surface) {
+      if (!/[가-힣]/.test(surface)) return { surface, lemma:surface, pos:/^\d+$/.test(surface) ? '수사' : '영문/기호', detail:'원문 유지' };
+      const {stem, particle} = splitParticle(surface);
+      let m;
+      // 서술격 조사 활용: 시작이었다 → 시작이다
+      if ((m=stem.match(/^(.+?)(이었|였)(다|습니다|어요|어|고|지만|던|을|는)?$/))) return {surface, lemma:m[1]+'이다', pos:'명사+이다', detail:'서술격 조사 원형화'};
+      if ((m=stem.match(/^(.+?)(입니다|이다|이며|이고|이면|인)$/))) return {surface, lemma:m[1]+'이다', pos:'명사+이다', detail:'서술격 조사 원형화'};
+      // 하다/되다 활용: 공부했다 → 공부하다
+      if ((m=stem.match(/^(.+?)(하였|했)(다|습니다|어요|어|고|지만|던|을|는)?$/))) return {surface, lemma:m[1]+'하다', pos:'동사/형용사', detail:'하다 원형화'};
+      if ((m=stem.match(/^(.+?)합(니다|니까|시다)$/))) return {surface, lemma:m[1]+'하다', pos:'동사/형용사', detail:'하다 원형화'};
+      if ((m=stem.match(/^(.+?)하(는|고|면|며|자|다|게|지)$/))) return {surface, lemma:m[1]+'하다', pos:'동사/형용사', detail:'하다 원형화'};
+      if ((m=stem.match(/^(.+?)되(었|었)(다|습니다|어요|어|고|지만|던)?$/))) return {surface, lemma:m[1]+'되다', pos:'동사/형용사', detail:'되다 원형화'};
+      // 대표 과거 어미: 먹었다 → 먹다
+      if ((m=stem.match(/^(.+?)(았|었)(다|습니다|어요|어|고|지만|던|을|는)?$/))) return {surface, lemma:m[1]+'다', pos:'동사/형용사', detail:'과거형 원형화'};
+      if ((m=stem.match(/^(.+?)(습니다|ㅂ니다)$/))) return {surface, lemma:m[1]+'다', pos:'동사/형용사', detail:'종결 어미 원형화'};
+      return {surface, lemma:stem, pos:particle ? '명사 (조사 분리)' : '명사/기타', detail:particle ? `${particle} 조사 분리` : '원문 유지'};
+    }
+    function stopwordSet() { return new Set([$('#use-stopwords').checked ? defaultStopwords : [], tokenize($('#stopwords').value)].flat()); }
+    function escapeHtml(value) { return value.replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
+    function renderSentenceResults(sentences) {
+      $('#sentence-results').innerHTML = sentences.map((sentence, index) => {
+        const removed = sentence.removed.length ? sentence.removed.map(item => `<span class="tag">${escapeHtml(item.word)} · ${item.reason}</span>`).join('') : '<span class="kept">제외된 불용어가 없습니다.</span>';
+        const kept = sentence.kept.length ? sentence.kept.map(token => escapeHtml(token.lemma)).join(', ') : '없음';
+        return `<article class="sentence-card"><div class="sentence-source"><b>문장 ${index + 1}</b>${escapeHtml(sentence.source)}</div><div class="sentence-result"><strong>불용어 처리 결과 (제외됨)</strong>${removed}<div class="kept">분석 대상 형태소: ${kept}</div></div></article>`;
+      }).join('');
+    }
+    function renderVocabulary() {
+      if (!model) return;
+      model.vocabulary = model.data.map(item => item.word).sort((a,b) => a.localeCompare(b, 'ko'));
+      $('#vocabulary').innerHTML = model.vocabulary.map(word => `<span>${escapeHtml(word)}</span>`).join('');
+      const header = `<thead><tr><th>문장</th>${model.vocabulary.map(word => `<th>${escapeHtml(word)}</th>`).join('')}</tr></thead>`;
+      const body = model.docs.map((doc, index) => { const present = new Set(doc.map(token => token.lemma)); return `<tr><td>문장 ${index + 1}</td>${model.vocabulary.map(word => `<td>${present.has(word) ? 1 : 0}</td>`).join('')}</tr>`; }).join('');
+      $('#onehot-table').innerHTML = header + `<tbody>${body}</tbody>`;
+    }
+    function renderPracticeTable() {
+      if (!model) return;
+      const dataByWord = new Map(model.data.map(item => [item.word, item]));
+      const rows = model.docs.flatMap((doc, docIndex) => {
+        const counts = new Map(); doc.forEach(token => counts.set(token.lemma, (counts.get(token.lemma) || 0) + 1));
+        return model.vocabulary.map(word => { const term = dataByWord.get(word), tf = counts.get(word) || 0, score = tf * term.idf; const fields = [['tf',tf],['df',term.df],['idf',term.idf],['tfidf',score]]; return `<tr><td>문장 ${docIndex + 1}</td><td>${escapeHtml(word)}</td>${fields.map(([name,value]) => `<td><input class="answer-input" type="number" step="any" inputmode="decimal" aria-label="문장 ${docIndex + 1} ${word} ${name}" data-answer="${value}" data-metric="${name}" placeholder="?"></td>`).join('')}</tr>`; });
+      }).join('');
+      $('#practice-rows').innerHTML = rows;
+      $('#grade-result').textContent = '값을 입력한 뒤 결과 확인하기를 눌러 주세요.';
+    }
+    function gradePractice() {
+      const inputs = [...document.querySelectorAll('#practice-rows .answer-input')];
+      const filled = inputs.filter(input => input.value.trim() !== '');
+      if (!filled.length) { $('#grade-result').textContent = '아직 입력한 값이 없습니다. 표의 빈칸을 채워 주세요.'; return; }
+      let correct = 0;
+      filled.forEach(input => { const expected = Number(input.dataset.answer), actual = Number(input.value); const tolerance = input.dataset.metric === 'idf' || input.dataset.metric === 'tfidf' ? 0.0006 : 0.000001; const isCorrect = Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance; input.classList.toggle('correct', isCorrect); input.classList.toggle('incorrect', !isCorrect); if (isCorrect) correct++; });
+      const total = inputs.length, percent = Math.round(correct / filled.length * 100);
+      $('#grade-result').textContent = `입력한 ${filled.length}칸 중 ${correct}칸 정답 (${percent}점)입니다. 전체 연습 칸은 ${total}칸입니다. 초록색은 정답, 빨간색은 다시 확인할 값입니다.`;
+    }
+    function showTab(name) {
+      document.querySelectorAll('.tab').forEach(tab => tab.classList.toggle('active', tab.dataset.tab === name));
+      $('#analysis-panel').classList.toggle('active', name === 'analysis'); $('#practice-panel').classList.toggle('active', name === 'practice');
+    }
+    function analyze() {
+      const stopwords = stopwordSet();
+      const entries = $('#source').value.split(/\n+/).map(source => ({source:source.trim(), words:tokenize(source)})).filter(entry => entry.source && entry.words.length);
+      if (!entries.length) { alert('분석할 텍스트를 입력해 주세요.'); return; }
+      const sentenceResults = entries.map(entry => {
+        const kept = [], removed = [];
+        entry.words.map(analyzeMorpheme).forEach(token => {
+          const particle = splitParticle(token.surface).particle;
+          if (particle) removed.push({word:particle, reason:'조사'});
+          if (stopwords.has(token.surface) || stopwords.has(token.lemma)) removed.push({word:token.surface, reason:'불용어'});
+          else kept.push(token);
+        });
+        return {source:entry.source, kept, removed};
+      });
+      const rawDocs = entries.map(entry => entry.words);
+      const docs = sentenceResults.map(sentence => sentence.kept);
+      const total = docs.reduce((n,d) => n+d.length, 0), df = new Map(), all = new Set(), tokenInfo = new Map();
+      if (!total) { alert('불용어를 제외한 뒤 남은 단어가 없습니다. 불용어 설정을 조정해 주세요.'); return; }
+      docs.forEach(doc => { doc.forEach(token => { if (!tokenInfo.has(token.lemma)) tokenInfo.set(token.lemma,{pos:token.pos, detail:token.detail, forms:new Set()}); tokenInfo.get(token.lemma).forms.add(token.surface); }); const unique = new Set(doc.map(token=>token.lemma)); unique.forEach(word => { df.set(word,(df.get(word)||0)+1); all.add(word); }); });
+      const data = [...all].map(word => ({ word, ...tokenInfo.get(word), idf:Math.log((docs.length+1)/(df.get(word)+1))+1, df:df.get(word) }));
+      model = {docs, data, total};
+      $('#doc-count').textContent=docs.length; $('#word-count').textContent=total; $('#unique-count').textContent=all.size;
+      $('#doc-select').innerHTML=docs.map((_,i)=>`<option value="${i}">문장 ${i+1}</option>`).join('');
+      const removed = sentenceResults.reduce((count, sentence) => count + sentence.removed.length, 0);
+      $('#result-note').textContent=`총 ${docs.length}개 문장의 형태소를 원형으로 묶었습니다. 조사·불용어 ${removed}개를 제외했습니다. 문장별 결과는 선택 상자에서 바꿀 수 있습니다.`;
+      renderSentenceResults(sentenceResults);
+      renderVocabulary(); renderPracticeTable(); showTab('analysis');
+      $('#results').style.display='block'; render(); $('#results').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+    function render() {
+      if (!model) return; const index=+$('#doc-select').value, counts=new Map(); model.docs[index].forEach(token=>counts.set(token.lemma,(counts.get(token.lemma)||0)+1));
+      const view=model.data.map(x=>({...x,tf:counts.get(x.word)||0})).map(x=>({...x,score:x.tf*x.idf})).sort((a,b)=>b.score-a.score || a.word.localeCompare(b.word));
+      const max=Math.max(...view.map(x=>x.score),1);
+      $('#rows').innerHTML=view.map(x=>`<tr><td>${x.word}</td><td>${x.pos}<br><small>${x.detail}</small></td><td>${[...x.forms].join(', ')}</td><td>${x.tf}</td><td>${x.idf.toFixed(4)}</td><td>${x.score.toFixed(4)}</td><td><span class="bar" style="width:${Math.max(3,70*x.score/max)}px"></span></td></tr>`).join('') || '<tr><td colspan="7" class="empty">표시할 형태소가 없습니다.</td></tr>';
+    }
+    $('#analyze').onclick=analyze; $('#sample').onclick=()=>{ $('#source').value=example; analyze(); }; $('#clear').onclick=()=>{ $('#source').value=''; $('#results').style.display='none'; $('#source').focus(); }; $('#doc-select').onchange=render;
+    document.querySelectorAll('.tab').forEach(tab => tab.onclick = () => showTab(tab.dataset.tab));
+    $('#grade').onclick=gradePractice; $('#reset-practice').onclick=()=>{ document.querySelectorAll('#practice-rows .answer-input').forEach(input=>{input.value=''; input.className='answer-input';}); $('#grade-result').textContent='답안을 지웠습니다. 다시 입력해 주세요.'; };
+  </script>
+</body>
+</html>
